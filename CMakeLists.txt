@@ -17,6 +17,7 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake-modules)
 # Find the bstring package
 #
 find_package(Bstring REQUIRED)
+find_package(CDbg REQUIRED)
 
 add_subdirectory (src)
 add_subdirectory (test)
