@@ -1,0 +1,3 @@
+[submodule "c-dbg"]
+	path = c-dbg
+	url = git@github.com:grantus/c-dbg.git
