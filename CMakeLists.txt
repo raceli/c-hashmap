@@ -4,20 +4,36 @@
 cmake_minimum_required (VERSION 2.8.12)
 
 #
-# cdebug project yo!
+# chashmap project yo!
 #
-project (cdebug)
+project (chashmap)
 
 #
-# Include our cmake-module submodule to help locate libraries :)
+# Because I have cmake-modules checked out in my code directory I know that I 
+# should always have a cmake-modules folder available below this project's src
+# dir.
 #
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake-modules)
+SET(
+  CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH} 
+  ${PROJECT_SOURCE_DIR}/../cmake-modules
+)
 
 # 
 # Find the bstring package
 #
 find_package(Bstring REQUIRED)
 find_package(CDbg REQUIRED)
+find_package(CDarray REQUIRED)
 
 add_subdirectory (src)
 add_subdirectory (test)
+
+#
+# Copy Include Directory to the Installation Prefix (i.e. /usr/local/)
+#
+install (
+  DIRECTORY ${chashmap_SOURCE_DIR}/include
+  DESTINATION ${CMAKE_INSTALL_PREFIX}
+  FILES_MATCHING PATTERN "*.h"
+)
