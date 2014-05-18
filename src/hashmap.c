@@ -38,8 +38,8 @@ static uint32_t default_hash(void * a) {
  * Create a new Hashmap. A comparison and hashing function can be supplied,
  * or NULL, in which case the default bstring-based functions will be used.
  */
-Hashmap * Hashmap_create(Hashmap_compare compare, Hashmap_hash hash) {
-  Hashmap * map = calloc(1, sizeof(Hashmap));
+hashmap_t * hashmap_create(hashmap_compare compare, hashmap_hash hash) {
+  hashmap_t * map = calloc(1, sizeof(hashmap_t));
   check_mem(map);
 
   /* if no compare / hash function are provided we supply default ones */
@@ -47,14 +47,14 @@ Hashmap * Hashmap_create(Hashmap_compare compare, Hashmap_hash hash) {
   map->hash = hash == NULL ? default_hash : hash;
 
   /* create buckets array */
-  map->buckets = DArray_create(sizeof(DArray *), DEFAULT_NUMBER_OF_BUCKETS);
+  map->buckets = darray_create(sizeof(darray_t *), DEFAULT_NUMBER_OF_BUCKETS);
   map->buckets->size = map->buckets->max; // fake out expanding it
   check_mem(map->buckets);
 
   return map;
 error:
   if (map) {
-    Hashmap_destroy(map);
+    hashmap_destroy(map);
   }
   return NULL;
 }
@@ -62,7 +62,7 @@ error:
 /*
  * Destroy the provided Hashmap.
  */
-void Hashmap_destroy(Hashmap * map) {
+void hashmap_destroy(hashmap_t * map) {
   int b_index = 0;
 
   if (map) {
@@ -71,14 +71,14 @@ void Hashmap_destroy(Hashmap * map) {
        * iterate the map's buckets, which contain a dynamic array of bucket
        * items, and free them all!
        */
-      for (b_index = 0; b_index < DArray_size(map->buckets); b_index++) {
-        /* Buckets themselves are DArrays of "things" stored at the key */
-        DArray * bucket = DArray_get(map->buckets, b_index);
+      for (b_index = 0; b_index < darray_size(map->buckets); b_index++) {
+        /* Buckets themselves are dynamic arrays of "things" stored at the key */
+        darray_t * bucket = darray_get(map->buckets, b_index);
         if (bucket) {
-          DArray_clear_destroy(bucket);
+          darray_clear_destroy(bucket);
         }
       }
-      DArray_destroy(map->buckets);
+      darray_destroy(map->buckets);
     }
 
     free(map);
@@ -88,13 +88,13 @@ void Hashmap_destroy(Hashmap * map) {
 /*
  * Internal function: Create a new Hashmap node.
  */
-static inline HashmapNode * Hashmap_node_create(
+static inline hashmap_node_t * hashmap_node_create(
   int hash,
   void * key,
   void * data) {
 
   /* allocate memory for the new node */
-  HashmapNode * node = calloc(1, sizeof(HashmapNode));
+  hashmap_node_t * node = calloc(1, sizeof(hashmap_node_t));
   check_mem(node);
 
   node->key = key;
@@ -120,8 +120,8 @@ error:
  * Returns NULL if no bucket is found, and the create flag is 0, otherwise
  * returns a pointer to the bucket dynamic array for the given key value.
  */
-static inline DArray * Hashmap_find_bucket(
-  Hashmap * map,
+static inline darray_t * hashmap_find_bucket(
+  hashmap_t * map,
   void * key,
   int create,
   uint32_t * hash_out) {
@@ -141,16 +141,16 @@ static inline DArray * Hashmap_find_bucket(
   *hash_out = hash;
 
   /* get the bucket at the index determined by the hash */
-  DArray * bucket = DArray_get(map->buckets, bucket_index);
+  darray_t * bucket = darray_get(map->buckets, bucket_index);
 
   /*
    * if the bucket doesn't exist, and we have a create flag set...
    * create a new one
    */
   if (!bucket && create) {
-    bucket = DArray_create(sizeof(void *), DEFAULT_NUMBER_OF_BUCKETS);
+    bucket = darray_create(sizeof(void *), DEFAULT_NUMBER_OF_BUCKETS);
     check_mem(bucket);
-    DArray_set(map->buckets, bucket_index, bucket);
+    darray_set(map->buckets, bucket_index, bucket);
   }
 
   return bucket;
@@ -163,27 +163,27 @@ error:
  *
  * Returns 1 if the key/value pair was successfully stored.
  */
-int Hashmap_set(Hashmap * map, void * key, void * data) {
+int hashmap_set(hashmap_t * map, void * key, void * data) {
   /*
    * get the bucket that maps to this key, based on its hash
    * (which we also store)
    */
   uint32_t hash = 0;
-  DArray * bucket = Hashmap_find_bucket(map, key, 1, &hash);
+  darray_t * bucket = hashmap_find_bucket(map, key, 1, &hash);
   check(
     bucket,
     "hashmap_set: could not create or get bucket for the key provided."
   );
 
   /* create a new node that stores the key/value/hash info for this new item */
-  HashmapNode * node = Hashmap_node_create(hash, key, data);
+  hashmap_node_t * node = hashmap_node_create(hash, key, data);
   check_mem(node);
 
   /*
    * push the node onto the dynamic array for this key's hash index -- note that
    * it is possible for more than one node to be stored in the same bucket
    */
-  DArray_push(bucket, node);
+  darray_push(bucket, node);
 
   return 1;
 error:
@@ -196,19 +196,19 @@ error:
  *
  * Returns the index of the node if it is found, or -1 on failure.
  */
-static inline int Hashmap_get_node(
-  Hashmap * map,
+static inline int hashmap_get_node(
+  hashmap_t * map,
   uint32_t hash,
-  DArray * bucket,
+  darray_t * bucket,
   void * key) {
 
   int index = 0;
 
   /* search for the node */
-  for (index = 0; index < DArray_size(bucket); index++) {
+  for (index = 0; index < darray_size(bucket); index++) {
     debug("hashmap_get_node: searching %d...", index);
 
-    HashmapNode * node = DArray_get(bucket, index);
+    hashmap_node_t * node = darray_get(bucket, index);
 
     /* if we have a hit, return the index */
     if (node->hash == hash && map->compare(node->key, key) == 0) {
@@ -225,24 +225,24 @@ static inline int Hashmap_get_node(
  *
  * Returns the value if it is found, or NULL if it doesn't exist in the map.
  */
-void * Hashmap_get(Hashmap * map, void * key) {
+void * hashmap_get(hashmap_t * map, void * key) {
   /*
    * get the bucket that maps to this key, based on its hash
    * (which we also store)
    */
   uint32_t hash = 0;
-  DArray * bucket = Hashmap_find_bucket(map, key, 0, &hash);
+  darray_t * bucket = hashmap_find_bucket(map, key, 0, &hash);
 
   check(bucket != NULL, "hashmap_get: failed to get or create bucket for key.");
 
   /* find this particular node in the bucket dynamic array */
-  int node_index = Hashmap_get_node(map, hash, bucket, key);
+  int node_index = hashmap_get_node(map, hash, bucket, key);
 
   /* couldn't find it... doesn't exist! */
   if (node_index == -1) { return NULL; }
 
   /* get the node stored at the node index within the bucket for this key */
-  HashmapNode * node = DArray_get(bucket, node_index);
+  hashmap_node_t * node = darray_get(bucket, node_index);
 
   check(
     node != NULL,
@@ -262,16 +262,16 @@ error:
  * Returns 1 if the traversal function was successfully applied to all elements,
  * or 0 otherwise.
  */
-int Hashmap_traverse(Hashmap * map, Hashmap_traverse_cb traverse_cb) {
+int hashmap_traverse(hashmap_t * map, hashmap_traverse_cb traverse_cb) {
   int b_index = 0;
   int item_index = 0;
 
-  for (b_index = 0; b_index < DArray_size(map->buckets); b_index++) {
-    DArray * bucket = DArray_get(map->buckets, b_index);
+  for (b_index = 0; b_index < darray_size(map->buckets); b_index++) {
+    darray_t * bucket = darray_get(map->buckets, b_index);
 
     if (bucket) {
-      for (item_index = 0; item_index < DArray_size(bucket); item_index++) {
-        HashmapNode * node = DArray_get(bucket, item_index);
+      for (item_index = 0; item_index < darray_size(bucket); item_index++) {
+        hashmap_node_t * node = darray_get(bucket, item_index);
 
         /*
          * if the traversal function "fails", short circuit the loop, bail out
@@ -293,14 +293,14 @@ int Hashmap_traverse(Hashmap * map, Hashmap_traverse_cb traverse_cb) {
  * Returns the value removed from the Hashmap, or NULL if the key doesn't
  * exist in this map.
  */
-void * Hashmap_remove(Hashmap * map, void * key) {
+void * hashmap_remove(hashmap_t * map, void * key) {
 
   /*
    * get the bucket that maps to this key, based on its hash
    * (which we also store)
    */
   uint32_t hash = 0;
-  DArray * bucket = Hashmap_find_bucket(map, key, 0, &hash);
+  darray_t * bucket = hashmap_find_bucket(map, key, 0, &hash);
 
   /* check that the bucket index is valid */
   check(
@@ -308,7 +308,7 @@ void * Hashmap_remove(Hashmap * map, void * key) {
     "hashmap_remove: failed to get or create bucket for key."
   );
 
-  int node_index = Hashmap_get_node(map, hash, bucket, key);
+  int node_index = hashmap_get_node(map, hash, bucket, key);
 
   /* nothing to remove (that key didn't exist in our map) */
   if (node_index == -1) {
@@ -317,7 +317,7 @@ void * Hashmap_remove(Hashmap * map, void * key) {
   }
 
   /* get the node at the index of this key, grab its data, then free the node */
-  HashmapNode * node = DArray_get(bucket, node_index);
+  hashmap_node_t * node = darray_get(bucket, node_index);
   void * data = node->data;
 
   /*
@@ -327,9 +327,9 @@ void * Hashmap_remove(Hashmap * map, void * key) {
    * removed to the ending of the bucket list (which essentially swaps it down
    * and shrinking the size of the array by 1).
    */
-  HashmapNode * ending = DArray_pop(bucket);
+  hashmap_node_t * ending = darray_pop(bucket);
   if (ending != node) {
-    DArray_set(bucket, node_index, ending);
+    darray_set(bucket, node_index, ending);
   }
 
   /* free the hashmap node and return it's data */

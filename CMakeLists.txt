@@ -9,11 +9,18 @@ cmake_minimum_required (VERSION 2.8.12)
 project (chashmap)
 
 #
-# Because I have cmake-modules checked out in my code directory I know that I 
+# c flags
+#
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall")
+
+#
+# because I have cmake-modules checked out in my code directory I know that I 
 # should always have a cmake-modules folder available below this project's src
 # dir.
 #
-SET(
+set(
   CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH} 
   ${PROJECT_SOURCE_DIR}/../cmake-modules

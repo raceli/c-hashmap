@@ -9,37 +9,37 @@
 /*
  * Compare function type definition.
  */
-typedef int (*Hashmap_compare) (void * a, void * b);
+typedef int (*hashmap_compare) (void * a, void * b);
 
 /*
  * Hash function type definition.
  */
-typedef uint32_t (*Hashmap_hash) (void * key);
+typedef uint32_t (*hashmap_hash) (void * key);
 
 /*
  * Main HashMap structure
  */
-typedef struct Hashmap_ {
-  DArray * buckets;
-  Hashmap_compare compare;
-  Hashmap_hash hash;
-} Hashmap;
+typedef struct hashmap {
+  darray_t * buckets;
+  hashmap_compare compare;
+  hashmap_hash hash;
+} hashmap_t;
 
 /*
  * A Node in a HashMap
  */
-typedef struct HashmapNode_ {
+typedef struct hashmap_node {
   void * key;
   void * data;
   uint32_t hash;
-} HashmapNode;
+} hashmap_node_t;
 
 /*
  * Traversal callback function type definition.
  *
  * Any implementations should return 1 on success, and 0 otherwise.
  */
-typedef int (*Hashmap_traverse_cb) (HashmapNode * node);
+typedef int (*hashmap_traverse_cb) (hashmap_node_t * node);
 
 /*******************************************************************************
  *
@@ -47,16 +47,16 @@ typedef int (*Hashmap_traverse_cb) (HashmapNode * node);
  *
  ******************************************************************************/
 
-Hashmap * Hashmap_create(Hashmap_compare compare, Hashmap_hash);
+hashmap_t * hashmap_create(hashmap_compare compare, hashmap_hash);
 
-void Hashmap_destroy(Hashmap * map);
+void hashmap_destroy(hashmap_t * map);
 
-int Hashmap_set(Hashmap * map, void * key, void * data);
+int hashmap_set(hashmap_t * map, void * key, void * data);
 
-void * Hashmap_get(Hashmap * map, void * key);
+void * hashmap_get(hashmap_t * map, void * key);
 
-int Hashmap_traverse(Hashmap * map, Hashmap_traverse_cb traverse_cb);
+int hashmap_traverse(hashmap_t * map, hashmap_traverse_cb traverse_cb);
 
-void * Hashmap_remove(Hashmap * map, void * key);
+void * hashmap_remove(hashmap_t * map, void * key);
 
 #endif /* hashmap_h */
